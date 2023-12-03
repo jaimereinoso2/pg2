@@ -285,4 +285,22 @@ having count(*) > 1;
     GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo, TIMESTAMPDIFF(YEAR, e.birthdate, p.fecha_inicio)
     ORDER BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo;
     
+-- --------------
+-- 17 carga
+-- --------------
+
+    SELECT ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo, count(*) cuantos
+    FROM f_matriculasAsignaturas ma
+    INNER JOIN f_matriculasAsignaturas ma2
+	ON ma2.key_estudiante = ma.key_estudiante
+    AND ma2.periodo = ma.periodo
+    WHERE ma.analizar = 1
+    GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo
+    ORDER BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo;
+    
+    select *
+    from f_matriculasAsignaturas
+    where key_estudiante = '002F74930C7956A25CCEEECF8CEF84C6FC41C66C'
+    and periodo = '20181';
+    
     
