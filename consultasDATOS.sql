@@ -303,4 +303,34 @@ having count(*) > 1;
     where key_estudiante = '002F74930C7956A25CCEEECF8CEF84C6FC41C66C'
     and periodo = '20181';
     
+    -- -------------
+    --  19 cuatnas veces ya habñía visto esa asi
+    -- --------------
+    
+	SELECT ma.key_estudiante, ma.periodo, ma.asignatura, count(*) cuantos
+    FROM f_matriculasAsignaturas ma
+    INNER JOIN f_periodos p
+    ON p.periodo = ma.periodo
+    INNER JOIN f_matriculasAsignaturas ma2
+	ON ma2.key_estudiante = ma.key_estudiante
+    AND ma2.asignatura = ma.asignatura
+    INNER JOIN f_periodos p2
+    ON p2.periodo = ma2.periodo
+    WHERE ma.analizar = 1
+    AND p2.orden < p.orden 
+    GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura
+    ORDER BY ma.key_estudiante, ma.periodo, ma.asignatura;
+    
+    -- un estudiante la había visto 8 veces!!
+    select *
+    from f_matriculasAsignaturas
+    where key_estudiante = '1917B5D7ADFF357668C8A6F0A8EAF0638DF6B1E7'
+    and analizar = 1
+    order by periodo, asignatura;
+    
+    select periodo, nivel_nota, asignatura
+    from f_matriculasAsignaturas
+    where key_estudiante = '00724CD562AF1C6FF4ED73991F1DA0BB174A0727'
+    order by periodo desc, nivel_nota;
+    
     
