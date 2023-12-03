@@ -246,3 +246,27 @@ where analizar = 1;
     select * 
     from f_periodos
     order by ordenRE;
+    
+-- ------
+-- 13. tamaño grupo actual
+-- ------
+drop table temp;
+create table temp as
+SELECT ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo, COUNT(*) cuantos
+FROM f_matriculasAsignaturas ma
+INNER JOIN f_matriculasAsignaturas ma2
+ON ma2.periodo = ma.periodo
+AND ma2.asignatura = ma.asignatura
+AND ma2.grupo = ma.grupo
+GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo
+ORDER BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo;
+
+select key_estudiante, periodo, asignatura, count(*)
+from temp
+group by key_estudiante, periodo, asignatura
+having count(*) > 1;
+-- efectivamente no hay repetidos por key_estudiante, periodo, asignatura.  PERFECTO.
+
+
+    
+    

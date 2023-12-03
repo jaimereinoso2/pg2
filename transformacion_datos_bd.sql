@@ -708,6 +708,38 @@ where periodo = '20231'
 ;
 -- 7797 filas en el 20231
 
+-- -------------------------
+-- F_ESTUDIANTES adicionar un solo programa (el primero que tomó)
+-- -----------------------
+select pe.key_estudiante, pe.fecha_admision, count(*)
+from f_programasEstudiantes pe
+group by pe.key_estudiante, pe.fecha_admision
+having count(*) > 1;
+-- R/ 0.   NO hay casos en donde un estudiante entró a dos programas el misma fecha_admision
+
+-- creamos la columna primer_programa en F_ESTUDIANTES
+ALTER TABLE `proyectodegrado2`.`f_estudiantes` 
+ADD COLUMN `primer_programa` VARCHAR(45) NULL COMMENT 'Es el primer programa académico al que se registro' AFTER `fecha_icfes`;
+
+UPDATE f_estudiantes e
+SET primer_programa = 
+   (SELECT pe.programa
+    FROM f_programasEstudiantes pe
+    WHERE pe.key_estudiante = e.key_estudiante
+    AND pe.fecha_admision = 
+       (SELECT MIN(pe2.fecha_admision)
+        FROM f_programasEstudiantes pe2
+        WHERE pe2.key_estudiante = pe.key_estudiante)
+	);
+commit;
+
+-- veamos si quedó algún estudiante sin programa
+SELECT count(*)
+from f_estudiantes
+where primer_programa is null;
+-- R/ 0.  Todo estudiante tiene primer_programa
+
+
 
 
 
