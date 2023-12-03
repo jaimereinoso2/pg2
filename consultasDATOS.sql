@@ -4,17 +4,18 @@
 
 SELECT  ma.key_estudiante, ma.periodo, ma.asignatura, 
 		TIMESTAMPDIFF(YEAR,e.birthdate,p.fecha_inicio) estudiante_edad, 
-        e.sex,
-        ma.key_docente, d.sex,
-        TIMESTAMPDIFF(YEAR,d.birthdate,p.fecha_inicio) docente_edad
-FROM f_matriculasAsignaturas ma
-INNER JOIN f_estudiantes e
-ON e.key_estudiante = ma.key_estudiante
-LEFT JOIN f_docentes d 
-ON d.key_docente = ma.key_docente
-INNER JOIN f_periodos p
-ON p.periodo = ma.periodo
-WHERE ma.analizar = 1;
+        e.sex estudiante_genero, IFNULL(e.cod_colegio,'Ninguno') colegio,
+        IFNULL(ma.key_docente,'Ninguno') key_docente, IFNULL(d.sex,1) docente_genero,
+        IFNULL(TIMESTAMPDIFF(YEAR,d.birthdate,p.fecha_inicio),43) docente_edad, 
+        ma.estado, CAST(ma.nota AS DECIMAL(10,2)) nota
+    FROM f_matriculasAsignaturas ma
+    INNER JOIN f_estudiantes e
+    ON e.key_estudiante = ma.key_estudiante
+    LEFT JOIN f_docentes d 
+    ON d.key_docente = ma.key_docente
+    INNER JOIN f_periodos p
+    ON p.periodo = ma.periodo
+    WHERE ma.analizar = 1;                    -- solo para filas marcadas como analizar
 
 SELECT  AVG(
         TIMESTAMPDIFF(YEAR,d.birthdate,p.fecha_inicio)) docente_edad
@@ -171,6 +172,77 @@ inner join f_periodos p
 on p.periodo = m.periodo
 where key_estudiante = '306023AB9393647A8E4AD19E67EC6AB620240D78'
 and p.tipo = 'RE'
-order by ordenRE desc
+order by ordenRE desc;
+
+select estado, nota, count(*)
+from f_matriculasAsignaturas
+group by estado, nota
+order by estado, nota;
+
+select count(*)
+from f_matriculasAsignaturas
+where analizar = 1;
+-- 6989
 
 
+
+    SELECT  nota, length(nota)
+    FROM f_matriculasAsignaturas ma
+    INNER JOIN f_estudiantes e
+    ON e.key_estudiante = ma.key_estudiante
+    LEFT JOIN f_docentes d 
+    ON d.key_docente = ma.key_docente
+    INNER JOIN f_periodos p
+    ON p.periodo = ma.periodo
+    WHERE ma.analizar = 1;
+    
+    
+    select asignatura, periodo, estado, nota,count(*)
+    from f_matriculasAsignaturas
+    where analizar = 1
+    and nota is null
+    group by asignatura, periodo, estado, nota
+    order by asignatura, periodo, estado, nota;
+    
+    select periodo, asignatura, count(*)
+    from f_matriculasAsignaturas
+    where analizar = 1
+    group by periodo, asignatura
+    order by periodo, asignatura;
+    
+        SELECT ma.key_estudiante, ma.periodo, ma.asignatura, 
+           ma2.departamento, AVG(ma2.nivel_nota) promedio
+    FROM f_matriculasAsignaturas ma						-- tabla base
+    INNER JOIN f_periodos p								--  periodo de ma
+    ON p.periodo = ma.periodo
+    INNER JOIN  f_matriculasAsignaturas ma2				-- las asignaturas que vio antes
+    ON  ma2.key_estudiante = ma.key_estudiante
+    INNER JOIN f_periodos p2							-- periodo de las asignaturas que vio antes
+    ON p2.periodo = ma2.periodo
+    WHERE ma.analizar = 1								-- se toman en cuenta solo analizar = 1
+    AND p2.orden < p.orden                          -- solo miramos en el orden correcto
+    GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura, ma2.departamento;
+    
+    SELECT  ma.key_estudiante, ma.periodo, ma.asignatura,  p.orden - p2.orden hace, m.promedio_semestre
+    FROM f_matriculasAsignaturas ma
+    INNER JOIN f_periodos p
+    ON p.periodo = ma.periodo
+    INNER JOIN f_matriculas m
+    ON m.key_estudiante = ma.key_estudiante
+    INNER JOIN  f_periodos p2
+    ON p2.periodo = m.periodo
+    WHERE ma.analizar = 1						-- tomamos en cuenta solo las asignaturas de interés
+    AND p2.orden < p.orden;
+    
+    
+    select ma.key_estudiante, ma.periodo, ma.asignatura, p.periodo, p.ordenRE
+    from f_matriculasAsignaturas ma
+    INNER JOIN f_periodos p
+    ON p.periodo = ma.periodo
+    where ma.key_estudiante = '3749281AB483EED16A7397E22DCB3C0F8E94EBE9'
+    and ma.periodo = '20231CV'
+    and ma.asignatura = '300MAG006';
+    
+    select * 
+    from f_periodos
+    order by ordenRE;
