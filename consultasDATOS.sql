@@ -268,5 +268,21 @@ having count(*) > 1;
 -- efectivamente no hay repetidos por key_estudiante, periodo, asignatura.  PERFECTO.
 
 
+-- --------------
+-- 15 composición por edades del curso actual
+-- --------------
+
+    SELECT ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo, TIMESTAMPDIFF(YEAR, e.birthdate, p.fecha_inicio)  edad, count(*)
+    FROM f_matriculasAsignaturas ma
+    INNER JOIN f_matriculasAsignaturas ma2
+    ON ma2.periodo = ma.periodo
+    AND ma2.asignatura = ma.asignatura
+    AND ma2.grupo = ma.grupo
+    INNER JOIN f_estudiantes e
+    ON e.key_estudiante = ma.key_estudiante
+    INNER JOIN f_periodos p
+    ON p.periodo = ma.periodo
+    GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo, TIMESTAMPDIFF(YEAR, e.birthdate, p.fecha_inicio)
+    ORDER BY ma.key_estudiante, ma.periodo, ma.asignatura, ma.grupo;
     
     
