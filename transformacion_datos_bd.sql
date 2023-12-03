@@ -98,11 +98,6 @@ CHANGE COLUMN `analizar` `analizar` INT NOT NULL DEFAULT '0' ,
 ADD INDEX `i1` (`key_estudiante` ASC, `periodo` ASC, `asignatura` ASC, `grupo` ASC, `estado` ASC) VISIBLE;
 ;
 
--- algunas filas vienen con nulo en asignatura y asi no  sirven
-delete from f_matriculasAsignaturas ma
-where ma.asignatura is null;
-commit;
--- 1072 filas eliminadas
           
 -- las asiganturas vienen con un caracter especial al principio y hay que quitar eso.
 UPDATE f_matriculasAsignaturas ma
@@ -123,7 +118,7 @@ commit;
  from f_matriculasAsignaturas ma
  group by ma.key_estudiante, ma.periodo, ma.asignatura, estado
  having count(*) > 1;
- -- aparecen 438 filas con count > 1.. la máxima tiene 2.
+ -- aparecen 753 filas con count > 1.. la máxima tiene 2.
  
  -- VEAMOS UN CASO
  select *
@@ -173,7 +168,7 @@ commit;
  from f_matriculasAsignaturas ma
  group by ma.key_estudiante, ma.periodo, ma.asignatura
  having count(*) > 1;
- -- aparecen 168 filas en donde se repite el estudiante, periodo, asignatura
+ -- aparecen 468 filas en donde se repite el estudiante, periodo, asignatura
  
  -- veamos un caso
 select *
@@ -208,7 +203,36 @@ commit;
  from f_matriculasAsignaturas ma
  group by ma.key_estudiante, ma.periodo, ma.asignatura
  having count(*) > 1;
- -- ya no se repite.  UN ESTUDIANTE EN UN PERIODO Y UNA ASIGNATURA solo aparece una vez.
+ -- 320 filas repetidas
+ 
+  -- veamos un caso
+select *
+ from f_matriculasAsignaturas
+ where key_estudiante = '009CE2DA29044E33DCAABDE9DF4DB11C1E3FC7D0'
+ and periodo = '20222' 
+ and asignatura  is null;
+ 
+ -- vemos que se trata de matrículas con asignatura null.  Eso no nos sirve y deben eliminarse.
+ delete from f_matriculasAsignaturas
+ where asignatura is null;
+ -- 1072 filas borradas
+ 
+  -- REVISEMOS OTRA VEz: veamos que no se repita key_estudiante, periodo, asignatura
+ select ma.key_estudiante, ma.periodo, ma.asignatura, count(*)
+ from f_matriculasAsignaturas ma
+ group by ma.key_estudiante, ma.periodo, ma.asignatura
+ having count(*) > 1;
+ -- 0 filas repetidas
+ commit;
+ 
+ 
+ -- para que las cosas queden bien, es mejor poner las notas en null 
+-- en f_matriculasAsignaturas si el estado es D
+update f_matriculasAsignaturas
+set nota = null
+where estado = 'D';
+-- 5093 
+commit;
  
  select count(*)
  from f_matriculasAsignaturas;
@@ -245,6 +269,20 @@ group by key_estudiante
 having count(*) > 1;
 -- 0 filas repetidas
 
+-- AHORA CREEMOS LA COLUMNA departamento, la cual se extrae del nombre de la asignatura
+ALTER TABLE `proyectodegrado2`.`f_matriculasAsignaturas` 
+ADD COLUMN `departamento` VARCHAR(45) NULL AFTER `nivel_nota`;
+select distinct asignatura, substring(asignatura, 1,3), substring(asignatura,4,3)
+from f_matriculasAsignaturas;
+
+update f_matriculasAsignaturas
+set departamento = substring(asignatura,4,3);
+commit;
+
+select distinct departamento
+from f_matriculasAsignaturas;
+-- 149 departamentos
+
 -- coloquemos la fecha icfes a cada estudiante, con el icfes presentado más reciente
 drop table borrar;
 create table borrar as
@@ -264,8 +302,18 @@ set e.fecha_icfes  =
     where i.key = e.key_estudiante
     and b.key = i.key
     and i.date_loaded = b.date_loaded);
--- 1944 filas actualizadas
+-- 1929 filas actualizadas
 commit;
+
+select count(*)
+FROM F_estudiantes;
+-- 1944
+
+--  NOTA, ESTO IMPLICA QUE HAY ESTUDIANTES SIN ICFES
+select count(*)
+from f_estudiantes
+where fecha_icfes is null;
+-- 15 = 1944 - 1929
 
  -- -------------------------
  -- CREAMOS F_ICFES
@@ -282,7 +330,7 @@ from (
     ) v
 group by key_estudiante
 having count(*) > 1;
--- no ha repetidos
+-- no hay examenes repetidos
 
 drop table borrar2;
 create table borrar2 as
@@ -292,7 +340,9 @@ select  i.key, max( i.test_dt) test_dt, b.date_loaded, i.test_id
     where b.key = i.key
     and i.date_loaded = b.date_loaded
     group by i.key, b.date_loaded, i.test_id;
+-- 1929
 
+drop table f_icfes;
 create table f_icfes as
 select i.key key_estudiante, i.test_id, i.test_component, i.score, i.score_letter
 from icfes i
@@ -315,10 +365,12 @@ having count(*) > 1;
  -- -------------------------
  -- CREAMOS F_PROGRAMAS_ESTUDIANTES
  -- ------------------------
+ drop table f_programasEstudiantes;
  create table f_programasEstudiantes as
  select distinct de.key key_estudiante, de.acad_prog programa, 
                  date_format( de.fecha_admision, '%Y-%d-%m') fecha_admision
  from datos_estudiantes de;
+ -- 1968
  
  select  key_estudiante, count(*)
  from f_programasEstudiantes
@@ -329,7 +381,7 @@ having count(*) > 1;
  -- -------------------------
  -- CREAMOS F_DOCENTES
  -- ------------------------
- drop table f_docentes;
+drop table f_docentes;
 create table f_docentes as
 select d.key key_docente, d.sex, d.birthdate
 from docentes d;
@@ -376,7 +428,7 @@ set key_docente =
     from docentes_x_grupo dg
     where dg.strm = ma.strm
     and dg.class_nbr = ma.grupo);
-
+-- 95334 --- hay filas en f_matriuclasAsignaturas que no tienen docente
 commit;
 
 -- veamos que no nos quedaran key_docentes en matriculasAsignaturas que no existen en docentes
@@ -391,9 +443,10 @@ and not exists (
 
 select distinct sex
 from f_docentes;
+-- M y F
 
 -- -----------------
--- actualizamos F_ESTUDIANTE genero de estudiante de M, F a 0 1, y también el del docente
+-- actualizamos F_ESTUDIANTE y F_DOCENTES genero de estudiante de M, F a 0 1, y también el del docente
 -- -----------------
 UPDATE f_estudiantes
 set sex = 0
@@ -433,22 +486,30 @@ commit;
 select estado, length(estado), count(*)
 from f_matriculasAsignaturas
 group by estado, length(estado);
+-- confirmaos que solo hay dos estados:  E (ENROLL) y D (DROP) y no tienen caracteres especiales
+
+-- creamos la columna NIVEL_NOTA
+ALTER TABLE `proyectodegrado2`.`f_matriculasAsignaturas` 
+ADD COLUMN `nivel_nota` INT NULL AFTER `analizar`;
 
 UPDATE f_matriculasAsignaturas
-SET nivel_nota = -1;
--- 96334 filas actualizadas
+SET nivel_nota = -20;
+-- 95334 filas actualizadas
 
+-- si canceló, el nivel nota es -5
 UPDATE f_matriculasAsignaturas ma
 SET nivel_nota = -5
 WHERE estado = 'D';
 -- 5093 actualizadas
 
+-- si la perdió nivel nota 0
 UPDATE f_matriculasAsignaturas ma
 SET nivel_nota = 0
 WHERE estado = 'E'
 AND nota < 3.0;
 -- 13726 actualizadas
 
+-- si la ganó con nota entre 3 y antes de 3.8 nivel nota es 1
 UPDATE f_matriculasAsignaturas ma
 SET nivel_nota = 1
 WHERE estado = 'E'
@@ -456,24 +517,198 @@ AND nota >=3.0
 AND nota < 3.8;
 -- 24603 actualizadas
 
+-- si la ganó con nota superior a 3.8 nivel nota es 2
 UPDATE f_matriculasAsignaturas ma
 SET nivel_nota = 2
 WHERE estado = 'E'
 AND nota >=3.8;
 -- 51912 actualizadas
 
-commit;
+-- resulta que el periodo 20231 vino  con estado = E pero con nota 0, y seguramente es un error.  NO puede dejarse
+-- asi porque introduce un comportamiento extraño que el modelo va a tratar de replicar yq ue no es real.
+select periodo, count(*)
+from f_matriculasAsignaturas
+where nota = 0
+group by periodo
+order by periodo;
+-- 7501 casos para el 20231, comportamiento muy distinto a TODOS los otros periodos.
 
+-- el 20231 entonces se deja todo con asignaturas matriculadas y nota nula
+update f_matriculasAsignaturas
+set nota = null, 
+    estado = 'E',
+    nivel_nota = -10
+where periodo = '20231';
+-- 7699 filas actualizadas (algunas si venian con nota)
+commit;
 
 select nivel_nota, count(*)
 from f_matriculasAsignaturas
 group by nivel_nota;
--- 0: 13726
--- 1: 24603
--- 2: 51912
--- 3: 5093
+-- 0: 6222. (la perdieron)
+-- 1: 24591 (la ganaron regular)
+-- 2: 51729. (la ganaron bien)
+-- -5: 4995.  ( la cancelaron)
+-- -10: 7797. (la están viendo)
 
-    
+select estado, nota, count(*)
+from f_matriculasAsignaturas
+group by estado,  nota
+order by estado, nota;
+-- ahora si está todo en orden entre nota, estado, y el periodo 20231
+
+select periodo, nivel_nota,  count(*)
+from f_matriculasAsignaturas
+group by periodo, nivel_nota
+order by periodo, nivel_nota;
+
+select * 
+from f_matriculasAsignaturas
+where periodo = '20231'
+and nivel_nota = -5;
+-- R/ 0.
+
+
+-- -------------------
+-- DOCENTES - CREACIÓN de clave alterna más corta
+-- ------------------
+ALTER TABLE `proyectodegrado2`.`f_docentes` 
+ADD COLUMN `id_docente` INT NOT NULL AUTO_INCREMENT AFTER `birthdate`,
+ADD PRIMARY KEY (`id_docente`);
+;
+
+-- -----------------
+-- F_MATRICULAS
+-- -------------------
+-- Se usa para calcular promedios por semestre
+
+drop table f_matriculas;
+create table f_matriculas as
+select ma.key_estudiante, ma.periodo, p.tipo, 
+       round(sum(ma.creditos*ma.nota)/sum(creditos),2) promedio_semestre
+from f_matriculasAsignaturas ma
+inner join f_periodos p
+on p.periodo = ma.periodo
+group by ma.key_estudiante, ma.periodo, p.tipo;
+-- 14812 filas creadas
+
+select estado, nota, count(*)
+from f_matriculasAsignaturas
+group by estado, nota
+order by nota;
+-- 4995 filas vienen con nota nula, que corresponden a estado = 'D' y
+-- y 7797  son de asignaturas que apeans están viendo.
+
+
+-- veamos casos en donde el promedio_semestre es nulo
+select count(*)
+from f_matriculas
+where promedio_semestre is null;
+-- R/ 1461
+
+-- veamos un caso
+select *
+from f_matriculas
+where promedio_semestre is null;
+
+-- miremos sus asignaturas matriculadas
+select *
+from f_matriculasAsignaturas
+where key_estudiante = '3CD627BF81A83F04D38E9829F1AE45C09EA244B7'
+and periodo = '20172';
+-- Efectivamente, hay 7 asignaturas en ese periodo de ese estudiante y todas están canceladas
+-- Aunque esto puede ser un error, también puede ser que el estudiante realmente canceló todas sus asignaturas
+-- Esto implica que el promedio de ese semestre debería ser 0.
+
+-- veamos si los 1461 casos son de ese mismo tipo
+select count(*)
+from f_matriculas m
+where not exists (
+   select 'x'
+   from f_matriculasAsignaturas ma
+   where ma.key_estudiante = m.key_estudiante
+   and ma.periodo = m.periodo
+   and ma.estado = 'E')
+and m.promedio_semestre is null;
+-- 205 casos UNICAMENTE..    esto indica que si puede ser un caso normal
+
+-- veamos los otros casos
+select *
+from f_matriculas m
+where m.promedio_semestre is null
+and exists (
+   select 'x'
+   from f_matriculasAsignaturas ma
+   where ma.key_estudiante = m.key_estudiante
+   and ma.periodo = m.periodo
+   and ma.estado = 'E');
+-- 1256.  Son todos los casos del periodo 20231 en donde los estudiantes apenas están viendo las asignaturas
+
+select count(*)
+from f_matriculas
+where periodo = '20231';
+-- 1256
+
+
+-- verifiquemos que toda fila en f_matriculasAsignaturas tiene fila en f_matriculas
+select count(*)
+from f_matriculasAsignaturas ma
+where not exists (
+   select 'x'
+   from f_matriculas m
+   where m.key_estudiante = ma.key_estudiante
+   and m.periodo = ma.periodo);
+-- 0.  Se confirma que toda fila en f_matriculasAsignaturas tiene una fila en f_matriculas
+   
+-- confirmemos los promedios
+select promedio_semestre, count(*)
+from f_matriculas
+group by promedio_semestre
+order by promedio_semestre;
+-- todo f_matriculas tiene un promedio_semestre distinto a nulo, 
+-- pero si hay 1114 filas con promedio-semestre = 0.  estudimeos eso.
+
+-- confirmemos
+select *
+from f_matriculas
+where promedio_semestre = 0
+order by key_estudiante desc, periodo desc;
+
+select *
+from f_matriculasAsignaturas ma
+where key_estudiante = 'F5639AFF3A4F2D64BA9477299259937090D8D4E7'
+and periodo = '20201';
+-- efectivamente, ese estudiante matriculó 75asignaturas y obtuvo cero en todas.  Seguramente el estudiante abandonó sus estudios.
+
+-- veamos en qué periodos ocurrió eso
+select periodo, count(*)
+from f_matriculas
+where promedio_semestre = 0
+group by periodo
+order by periodo;
+-- son muy pocos casos.  1 en 20182, 1 en el 20191, etc.. 
+
+-- en realidad son pocos casos
+select count(*)
+from f_matriculas
+where promedio_semestre = 0;
+-- 28 casos.
+
+
+select nota, count(*)
+from f_matriculasAsignaturas
+where periodo = '20231'
+group by nota
+order by nota;
+-- todos los casos tienen nota null.
+
+select count(*)
+from f_matriculasAsignaturas
+where periodo = '20231'
+;
+-- 7797 filas en el 20231
+
+
 
 
 
