@@ -470,6 +470,14 @@ WHERE sex = 'M';
 
 commit;
 
+select sex, count(*)
+from f_docentes
+group by sex;
+
+select sex, count(*)
+from f_estudiantes
+group by sex;
+
 -- -----------------
 -- actualizamos F_ESTUDIANTES colegio de estudiante pues hay filas con un caracter especial que no se ve y debe ser OTHER
 -- -----------------
