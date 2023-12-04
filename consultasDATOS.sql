@@ -333,4 +333,38 @@ having count(*) > 1;
     where key_estudiante = '00724CD562AF1C6FF4ED73991F1DA0BB174A0727'
     order by periodo desc, nivel_nota;
     
+    -- ----------------
+    -- 23 experiencia docente este curso
+    -- -----------------
+
+
+
+SELECT  ma.key_estudiante, ma.periodo, ma.asignatura, da.id_docente, COUNT(*) cuantas
+FROM f_matriculasAsignaturas ma
+INNER JOIN f_periodos p
+ON p.periodo = ma.periodo
+INNER JOIN f_docentesAsignaturas da
+ON da.key_docente = ma.key_docente		-- el mismo docente
+AND da.asignatura = ma.asignatura		-- la misma asignatura
+WHERE ma.analizar = 1
+AND da.orden < p.orden					-- el docente la dictó en periodos anteriores
+GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura, da.id_docente;
+
+-- -----------------
+--  25 cursos tomados con ese mismos docente antes
+-- ----------------
+SELECT  ma.key_estudiante, ma.periodo, ma.asignatura, COUNT(*) cuantas
+FROM f_matriculasAsignaturas ma
+INNER JOIN f_periodos p
+ON p.periodo = ma.periodo
+INNER JOIN  f_matriculasAsignaturas ma2
+ON ma2.key_estudiante = ma.key_estudiante			-- el mismo estudiante
+AND ma2.key_docente = ma.key_docente				-- el mismo docente
+INNER JOIN f_periodos p2
+ON p2.periodo = ma2.periodo
+WHERE ma.analizar = 1								-- solo filas de interés
+AND p2.orden < p.orden								-- periodos anteriores
+GROUP BY ma.key_estudiante, ma.periodo, ma.asignatura;
+
+    
     

@@ -739,6 +739,31 @@ from f_estudiantes
 where primer_programa is null;
 -- R/ 0.  Todo estudiante tiene primer_programa
 
+-- -------------------
+-- f_docentesAsignaturas
+--
+-- indica cuándo un docente dictó una asignatura en un periodo
+-- -------------------
+DROP TABLE f_docentesAsignaturas;
+CREATE TABLE f_docentesAsignaturas AS
+SELECT DISTINCT ma.periodo, ma.asignatura, ma.grupo, p.orden,  ma.key_docente, d.id_docente
+FROM f_matriculasAsignaturas ma
+INNER JOIN f_periodos p
+ON p.periodo = ma.periodo
+INNER JOIN f_docentes D
+ON d.key_docente = ma.key_docente
+WHERE ma.key_docente is not null; 	
+
+-- veamos cuantas filas hay
+SELECT count(*)
+FROM f_docentesAsignaturas;
+
+-- confirmemos la pk
+select periodo, asignatura, grupo, count(*)
+from f_docentesAsignaturas
+group by periodo, asignatura, grupo
+having count(*) > 1;
+-- 0.  no se repite el grupo
 
 
 
