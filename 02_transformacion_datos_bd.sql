@@ -1,12 +1,11 @@
 set sql_safe_updates = 0;
 -- Generación de las tablas F_ que son las GOLD donde trabajaremos los modelos de ciencias de datos.
 
-
  -- -------------------------
  -- CREAMOS F_PERIODOS
  -- ------------------------
 
--- Arrancamos con creando los PERIODOS de interés
+-- Arrancamos  creando los PERIODOS de interés
 create view vperiodos as
 select acad_career, strm
 from estudiantes e
