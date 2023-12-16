@@ -5,9 +5,9 @@ import pandas as pd
 from unidecode import unidecode
 
 # Nombre del archivo Excel de entrada y hoja
-nombre = 'conversion_periodos'
+nombre = 'dfcorr1'
 archivo_excel = 'datos/' + nombre + '.xlsx'
-hoja_excel = 'Hoja1'
+hoja_excel = 'Sheet1'
 
 # Leer el archivo Excel en un DataFrame
 df = pd.read_excel(archivo_excel)
